@@ -1,0 +1,1 @@
+"""SmartChart source package root."""
