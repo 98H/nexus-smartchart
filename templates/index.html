@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartChart — پلتفرم نمودارسازی مالی و معاملات الگوریتمی پیشرفته</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #080b11; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; }
+    .bidi-isolate { unicode-bidi: isolate; direction: ltr; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0e111a; }
+    ::-webkit-scrollbar-thumb { background: #262b3d; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #38bdf8; }
+  </style>
+</head>
+<body class="h-screen w-screen flex flex-col select-none">
+
+  <!-- TOP HEADER (TradingView Style) -->
+  <header class="h-12 bg-[#131722] border-b border-[#1e222d] flex items-center justify-between px-3 shrink-0 text-xs">
+    <!-- Left: Brand & Symbol & Timeframes -->
+    <div class="flex items-center gap-3">
+      <!-- Brand -->
+      <div class="flex items-center gap-2 pr-2 border-l border-[#1e222d]">
+        <div class="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-400 font-black text-sm">
+          ⚡
+        </div>
+        <span class="font-black text-sm tracking-wide text-white">SmartChart</span>
+        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">PRO</span>
+      </div>
+
+      <!-- Current Symbol -->
+      <div class="flex items-center gap-2 cursor-pointer hover:bg-[#1e222d] px-2.5 py-1.5 rounded-lg transition" onclick="document.getElementById('symbolSearchModal').classList.remove('hidden')">
+        <span id="currentSymbolBtn" class="font-black text-sm text-cyan-400 font-mono">BTCUSDT</span>
+        <span id="headerPrice" class="font-mono text-white font-bold">$68,500.00</span>
+        <span id="headerChange" class="text-emerald-400 font-bold text-[11px]">+1.84%</span>
+      </div>
+
+      <!-- Timeframe Buttons -->
+      <div class="flex items-center bg-[#0e111a] p-0.5 rounded-lg border border-[#1e222d] font-mono font-bold text-[11px]">
+        <button class="tf-btn px-2 py-1 rounded transition text-slate-400 hover:text-white" data-tf="1m">1m</button>
+        <button class="tf-btn px-2 py-1 rounded transition text-slate-400 hover:text-white" data-tf="5m">5m</button>
+        <button class="tf-btn px-2 py-1 rounded transition text-slate-400 hover:text-white" data-tf="15m">15m</button>
+        <button class="tf-btn px-2 py-1 rounded transition bg-[#2962ff] text-white" data-tf="1h">1h</button>
+        <button class="tf-btn px-2 py-1 rounded transition text-slate-400 hover:text-white" data-tf="4h">4h</button>
+        <button class="tf-btn px-2 py-1 rounded transition text-slate-400 hover:text-white" data-tf="1d">1D</button>
+      </div>
+
+      <!-- Indicators Modal Trigger -->
+      <button onclick="document.getElementById('indicatorsModal').classList.remove('hidden')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1e222d] hover:bg-[#2a2e39] text-white font-bold transition">
+        <span>📊</span>
+        <span>اندیکاتورها (Indicators)</span>
+      </button>
+
+      <!-- LuxAlgo Presets -->
+      <button onclick="calculateAndRenderIndicators()" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30 font-bold transition">
+        <span>🔮</span>
+        <span>LuxAlgo SMC & Signals</span>
+      </button>
+    </div>
+
+    <!-- Right Actions -->
+    <div class="flex items-center gap-2">
+      <button onclick="document.getElementById('orderModal').classList.remove('hidden')" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition flex items-center gap-1.5 shadow-sm">
+        <span>📈</span>
+        <span>معامله (Paper Trading)</span>
+      </button>
+      <button onclick="chart.clearDrawings()" class="p-1.5 rounded-lg hover:bg-[#1e222d] text-slate-400 hover:text-white" title="پاک‌کردن ترسیم‌ها">
+        🗑️
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE (Tool rail + Chart + Right Sidebar) -->
+  <div class="flex-1 flex overflow-hidden" dir="ltr">
+    <!-- LEFT DRAWING TOOLBAR -->
+    <aside class="w-12 bg-[#131722] border-r border-[#1e222d] flex flex-col items-center py-3 gap-2 shrink-0 z-10">
+      <button class="tool-btn w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#1e222d] text-slate-400 transition" onclick="selectTool(null)" title="مکان‌نما">
+        🎯
+      </button>
+      <button class="tool-btn w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#1e222d] text-slate-400 transition" data-tool="trendline" onclick="selectTool('trendline')" title="خط روند (Trendline)">
+        📏
+      </button>
+      <button class="tool-btn w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#1e222d] text-slate-400 transition" data-tool="horizontal" onclick="selectTool('horizontal')" title="خط افقی (Horizontal Ray)">
+        ➖
+      </button>
+      <button class="tool-btn w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#1e222d] text-slate-400 transition" data-tool="fibonacci" onclick="selectTool('fibonacci')" title="فیبوناچی ریتریسمنت (Fibonacci)">
+        🧬
+      </button>
+      <button class="tool-btn w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#1e222d] text-slate-400 transition" data-tool="rectangle" onclick="selectTool('rectangle')" title="مستطیل / بلوک سفارش (Order Block)">
+        🔲
+      </button>
+      <div class="w-6 h-px bg-[#1e222d] my-1"></div>
+      <button class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-rose-500/20 text-rose-400 transition" onclick="chart.clearDrawings()" title="حذف تمام ترسیم‌ها">
+        🗑️
+      </button>
+    </aside>
+
+    <!-- CENTER: VELA CANVAS + BOTTOM DRAWER -->
+    <main class="flex-1 flex flex-col relative overflow-hidden">
+      <!-- CHART CANVAS -->
+      <div id="chartContainer" class="flex-1 w-full h-full relative overflow-hidden"></div>
+
+      <!-- BOTTOM DRAWER (Pine Editor, Strategy Tester, Paper Trading) -->
+      <div id="bottomDrawer" class="h-64 bg-[#131722] border-t border-[#1e222d] flex flex-col shrink-0">
+        <!-- Tabs bar -->
+        <div class="h-9 bg-[#0e111a] border-b border-[#1e222d] flex items-center justify-between px-3 text-xs">
+          <div class="flex items-center gap-1 font-bold">
+            <button class="drawer-tab-btn active-tab px-3 py-2 text-cyan-400 border-b-2 border-cyan-400" data-pane="panePineEditor">
+              💻 ویرایشگر پاین‌اسکریپت (Pine Editor v5/v6)
+            </button>
+            <button id="tabStrategyTesterBtn" class="drawer-tab-btn px-3 py-2 text-slate-400 hover:text-white" data-pane="paneStrategyTester">
+              📊 تستر استراتژی (Strategy Tester)
+            </button>
+            <button class="drawer-tab-btn px-3 py-2 text-slate-400 hover:text-white" data-pane="panePaperTrading">
+              💼 حساب معاملاتی (Paper Trading)
+            </button>
+          </div>
+          <div class="text-[11px] text-slate-500 font-mono">
+            Vela + PineTS Native Runtime
+          </div>
+        </div>
+
+        <!-- Tab 1: Pine Editor -->
+        <div id="panePineEditor" class="drawer-pane flex-1 flex p-2 gap-3 overflow-hidden">
+          <div class="flex-1 flex flex-col">
+            <textarea id="pineScriptCode" class="flex-1 w-full bg-[#080b11] border border-[#1e222d] rounded-xl p-3 font-mono text-xs text-slate-200 resize-none outline-none focus:border-cyan-500/50" dir="ltr" spellcheck="false">//@version=5
+strategy("Golden Cross Strategy", overlay=true)
+
+fast = ta.ema(close, 9)
+slow = ta.ema(close, 21)
+
+plot(fast, title="Fast EMA", color=color.blue)
+plot(slow, title="Slow EMA", color=color.orange)
+
+if ta.crossover(fast, slow)
+    strategy.entry("Long", strategy.long)
+
+if ta.crossunder(fast, slow)
+    strategy.close("Long")</textarea>
+          </div>
+          <div class="w-64 bg-[#0e111a] border border-[#1e222d] rounded-xl p-3 flex flex-col justify-between text-xs">
+            <div class="space-y-2">
+              <span class="font-bold text-white block">قالب‌های آماده:</span>
+              <button onclick="document.getElementById('pineScriptCode').value = PINE_TEMPLATES.sma_cross" class="w-full text-right p-1.5 rounded bg-[#131722] hover:bg-[#1e222d] text-slate-300 transition">
+                📈 کراس مووینگ اوریج (Golden Cross)
+              </button>
+              <button onclick="document.getElementById('pineScriptCode').value = PINE_TEMPLATES.supertrend" class="w-full text-right p-1.5 rounded bg-[#131722] hover:bg-[#1e222d] text-slate-300 transition">
+                ⚡ بریک‌اوت سوپرترند (Supertrend)
+              </button>
+              <button onclick="document.getElementById('pineScriptCode').value = PINE_TEMPLATES.luxalgo_smc" class="w-full text-right p-1.5 rounded bg-[#131722] hover:bg-[#1e222d] text-slate-300 transition">
+                🔮 پول هوشمند (LuxAlgo SMC)
+              </button>
+            </div>
+            <div class="space-y-2 pt-2 border-t border-[#1e222d]">
+              <span id="pineStatus" class="text-[10px] text-slate-400 block truncate">آماده برای اجرا</span>
+              <button onclick="executePineScript()" class="w-full py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition shadow-sm flex items-center justify-center gap-1.5">
+                <span>▶</span>
+                <span>کامپایل و افزودن به چارت</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Strategy Tester -->
+        <div id="paneStrategyTester" class="drawer-pane hidden flex-1 p-3 overflow-y-auto">
+          <div class="grid grid-cols-4 gap-3 mb-3">
+            <div class="bg-[#0e111a] p-2.5 rounded-xl border border-[#1e222d]">
+              <span class="text-[10px] text-slate-400 block">سود خالص (Net Profit)</span>
+              <span id="statNetProfit" class="text-base font-black text-emerald-400 font-mono">$0.00 (0%)</span>
+            </div>
+            <div class="bg-[#0e111a] p-2.5 rounded-xl border border-[#1e222d]">
+              <span class="text-[10px] text-slate-400 block">نرخ برد (Win Rate)</span>
+              <span id="statWinRate" class="text-base font-black text-white font-mono">0%</span>
+            </div>
+            <div class="bg-[#0e111a] p-2.5 rounded-xl border border-[#1e222d]">
+              <span class="text-[10px] text-slate-400 block">فاکتور سودآوری (Profit Factor)</span>
+              <span id="statProfitFactor" class="text-base font-black text-cyan-400 font-mono">0.00</span>
+            </div>
+            <div class="bg-[#0e111a] p-2.5 rounded-xl border border-[#1e222d]">
+              <span class="text-[10px] text-slate-400 block">تعداد کل معاملات</span>
+              <span id="statTotalTrades" class="text-base font-black text-purple-400 font-mono">0</span>
+            </div>
+          </div>
+          <table class="w-full text-right border-collapse">
+            <thead>
+              <tr class="border-b border-[#1e222d] text-slate-400 text-xs">
+                <th class="p-2">جهت</th>
+                <th class="p-2">قیمت ورود</th>
+                <th class="p-2">قیمت خروج</th>
+                <th class="p-2">سود / زیان (PnL)</th>
+              </tr>
+            </thead>
+            <tbody id="strategyTradesList"></tbody>
+          </table>
+        </div>
+
+        <!-- Tab 3: Paper Trading -->
+        <div id="panePaperTrading" class="drawer-pane hidden flex-1 p-3 flex gap-4">
+          <div class="w-80 bg-[#0e111a] p-3 rounded-xl border border-[#1e222d] space-y-3">
+            <span class="font-bold text-white text-xs block">ثبت سفارش سریع</span>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-400">حجم:</span>
+              <input id="orderQtyInput" type="number" value="0.5" step="0.1" class="flex-1 bg-[#131722] border border-[#1e222d] rounded-lg px-2 py-1 text-xs text-white font-mono">
+            </div>
+            <div class="grid grid-cols-2 gap-2 pt-2">
+              <button onclick="placePaperTrade('BUY')" class="py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition">
+                🟢 خرید (Buy / Long)
+              </button>
+              <button onclick="placePaperTrade('SELL')" class="py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition">
+                🔴 فروش (Sell / Short)
+              </button>
+            </div>
+          </div>
+          <div class="flex-1 bg-[#0e111a] p-3 rounded-xl border border-[#1e222d] flex flex-col justify-between">
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <span class="text-[10px] text-slate-400 block">مانده حساب (Balance)</span>
+                <span id="paperBalance" class="text-sm font-black text-white font-mono">$100,000.00</span>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block">دارایی کل (Equity)</span>
+                <span id="paperEquity" class="text-sm font-black text-white font-mono">$100,000.00</span>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block">سود/زیان باز (PnL)</span>
+                <span id="paperPnL" class="text-sm font-black text-emerald-400 font-mono">$0.00</span>
+              </div>
+            </div>
+            <span class="text-[10px] text-slate-500">حساب شبیه‌ساز معاملات بدون ریسک • استاندارد حسابداری FIFO</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- RIGHT DOCK (Watchlist, Simulator, Alt Data) -->
+    <aside class="w-80 bg-[#131722] border-l border-[#1e222d] flex flex-col shrink-0 text-xs" dir="rtl">
+      <!-- Tabs header -->
+      <div class="flex border-b border-[#1e222d] bg-[#0e111a]">
+        <button onclick="switchRightTab('tabWatchlist')" class="flex-1 py-2.5 font-bold text-cyan-400 border-b-2 border-cyan-400" id="btnRightWatchlist">
+          لیست دیده‌بان
+        </button>
+        <button onclick="switchRightTab('tabPropSim')" class="flex-1 py-2.5 font-bold text-slate-400 hover:text-white" id="btnRightPropSim">
+          پراپ‌فرم
+        </button>
+        <button onclick="switchRightTab('tabAltData')" class="flex-1 py-2.5 font-bold text-slate-400 hover:text-white" id="btnRightAltData">
+          دیتای شفافیت
+        </button>
+      </div>
+
+      <!-- Tab 1: Watchlist -->
+      <div id="tabWatchlist" class="flex-1 p-2 overflow-y-auto space-y-1">
+        <div id="watchlistItems" class="space-y-1"></div>
+      </div>
+
+      <!-- Tab 2: Prop Firm Simulator -->
+      <div id="tabPropSim" class="hidden flex-1 p-3 overflow-y-auto space-y-3">
+        <span class="font-bold text-white block">شبیه‌ساز مونت‌کارلو چالش پراپ</span>
+        <div class="space-y-2">
+          <div>
+            <label class="text-[10px] text-slate-400 block">سرمایه حساب ($)</label>
+            <input id="propAccSize" type="number" value="100000" class="w-full bg-[#0e111a] border border-[#1e222d] rounded-lg p-1.5 text-xs text-white font-mono">
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[10px] text-slate-400 block">وین‌ریت (٪)</label>
+              <input id="propWinRate" type="number" value="52" class="w-full bg-[#0e111a] border border-[#1e222d] rounded-lg p-1.5 text-xs text-white font-mono">
+            </div>
+            <div>
+              <label class="text-[10px] text-slate-400 block">ریسک به ریوارد</label>
+              <input id="propRR" type="number" value="1.5" step="0.1" class="w-full bg-[#0e111a] border border-[#1e222d] rounded-lg p-1.5 text-xs text-white font-mono">
+            </div>
+          </div>
+          <div>
+            <label class="text-[10px] text-slate-400 block">ریسک در هر معامله (٪)</label>
+            <input id="propRisk" type="number" value="1.0" step="0.25" class="w-full bg-[#0e111a] border border-[#1e222d] rounded-lg p-1.5 text-xs text-white font-mono">
+          </div>
+          <button id="btnRunPropSim" onclick="runPropFirmSimulation()" class="w-full py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition">
+            🎲 اجرای شبیه‌سازی مونت‌کارلو
+          </button>
+        </div>
+
+        <div class="p-3 bg-[#0e111a] rounded-xl border border-[#1e222d] space-y-2">
+          <div class="flex justify-between">
+            <span class="text-slate-400">شانس قبولی:</span>
+            <span id="propPassProb" class="font-black text-emerald-400 font-mono">-</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">فاصله اطمینان ۹۵٪:</span>
+            <span id="propWilsonCI" class="font-bold text-cyan-400 font-mono">-</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">امید ریاضی سود (EV):</span>
+            <span id="propEV" class="font-bold text-purple-400 font-mono">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Alternative Transparency Data -->
+      <div id="tabAltData" class="hidden flex-1 p-3 overflow-y-auto space-y-2">
+        <span class="font-bold text-white block">معاملات نمایندگان کنگره آمریکا</span>
+        <div id="congressionalTradesList" class="space-y-2"></div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- SYMBOL SEARCH MODAL -->
+  <div id="symbolSearchModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-[#131722] border border-[#1e222d] w-full max-w-md rounded-2xl p-4 shadow-2xl space-y-3">
+      <div class="flex items-center justify-between border-b border-[#1e222d] pb-2">
+        <span class="font-bold text-white text-sm">انتخاب نماد معاملاتی (Symbol)</span>
+        <button onclick="document.getElementById('symbolSearchModal').classList.add('hidden')" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+      <div class="space-y-1">
+        <button onclick="selectSymbol('BTCUSDT'); document.getElementById('symbolSearchModal').classList.add('hidden')" class="w-full text-right p-2 rounded-xl hover:bg-[#1e222d] text-xs font-mono font-bold text-white flex justify-between">
+          <span>BTCUSDT (Bitcoin)</span>
+          <span class="text-slate-400">$68,500</span>
+        </button>
+        <button onclick="selectSymbol('ETHUSDT'); document.getElementById('symbolSearchModal').classList.add('hidden')" class="w-full text-right p-2 rounded-xl hover:bg-[#1e222d] text-xs font-mono font-bold text-white flex justify-between">
+          <span>ETHUSDT (Ethereum)</span>
+          <span class="text-slate-400">$3,850</span>
+        </button>
+        <button onclick="selectSymbol('SOLUSDT'); document.getElementById('symbolSearchModal').classList.add('hidden')" class="w-full text-right p-2 rounded-xl hover:bg-[#1e222d] text-xs font-mono font-bold text-white flex justify-between">
+          <span>SOLUSDT (Solana)</span>
+          <span class="text-slate-400">$182.50</span>
+        </button>
+        <button onclick="selectSymbol('XAUUSD'); document.getElementById('symbolSearchModal').classList.add('hidden')" class="w-full text-right p-2 rounded-xl hover:bg-[#1e222d] text-xs font-mono font-bold text-white flex justify-between">
+          <span>XAUUSD (Gold)</span>
+          <span class="text-slate-400">$2,580</span>
+        </button>
+        <button onclick="selectSymbol('EURUSD'); document.getElementById('symbolSearchModal').classList.add('hidden')" class="w-full text-right p-2 rounded-xl hover:bg-[#1e222d] text-xs font-mono font-bold text-white flex justify-between">
+          <span>EURUSD (Euro)</span>
+          <span class="text-slate-400">1.0850</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INDICATORS MODAL -->
+  <div id="indicatorsModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-[#131722] border border-[#1e222d] w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-[#1e222d] pb-3">
+        <span class="font-bold text-white text-sm">مخزن اندیکاتورها و استراتژی‌ها (Indicators)</span>
+        <button onclick="document.getElementById('indicatorsModal').classList.add('hidden')" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+      <div class="space-y-2 max-h-80 overflow-y-auto pr-1">
+        <div class="p-2.5 rounded-xl bg-[#0e111a] border border-[#1e222d] flex items-center justify-between">
+          <div>
+            <span class="font-bold text-white block text-xs">LuxAlgo Signals & Overlays</span>
+            <span class="text-[10px] text-slate-400">سیگنال‌های تاییدیه ورود/خروج و ریبون نوسانی</span>
+          </div>
+          <span class="text-xs text-emerald-400 font-bold">فعال ✓</span>
+        </div>
+        <div class="p-2.5 rounded-xl bg-[#0e111a] border border-[#1e222d] flex items-center justify-between">
+          <div>
+            <span class="font-bold text-white block text-xs">Smart Money Concepts (SMC)</span>
+            <span class="text-[10px] text-slate-400">اوردر بلاک‌ها (+OB/-OB) و شکاف‌های ارزش منصفانه (FVG)</span>
+          </div>
+          <span class="text-xs text-emerald-400 font-bold">فعال ✓</span>
+        </div>
+        <div class="p-2.5 rounded-xl bg-[#0e111a] border border-[#1e222d] flex items-center justify-between">
+          <div>
+            <span class="font-bold text-white block text-xs">Moving Averages (SMA 20, EMA 50)</span>
+            <span class="text-[10px] text-slate-400">میانگین متحرک ساده و نمایی</span>
+          </div>
+          <span class="text-xs text-cyan-400 font-bold">فعال ✓</span>
+        </div>
+        <div class="p-2.5 rounded-xl bg-[#0e111a] border border-[#1e222d] flex items-center justify-between">
+          <div>
+            <span class="font-bold text-white block text-xs">Supertrend Indicator</span>
+            <span class="text-[10px] text-slate-400">ردیاب روند مبتنی بر ضریب دامنه واقعی میانگین (ATR)</span>
+          </div>
+          <span class="text-xs text-purple-400 font-bold">فعال ✓</span>
+        </div>
+      </div>
+      <div class="pt-2 border-t border-[#1e222d] text-left">
+        <button onclick="document.getElementById('indicatorsModal').classList.add('hidden')" class="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs transition">
+          بستن
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDER MODAL -->
+  <div id="orderModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-[#131722] border border-[#1e222d] w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4 text-xs">
+      <div class="flex items-center justify-between border-b border-[#1e222d] pb-2">
+        <span class="font-bold text-white text-sm">ارسال سفارش شبیه‌ساز (Paper Trade)</span>
+        <button onclick="document.getElementById('orderModal').classList.add('hidden')" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="text-slate-400 block mb-1">نماد:</label>
+          <span class="font-mono font-black text-white text-sm block">BTCUSDT</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="placePaperTrade('BUY'); document.getElementById('orderModal').classList.add('hidden')" class="py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition">
+            🟢 خرید فوری (Buy)
+          </button>
+          <button onclick="placePaperTrade('SELL'); document.getElementById('orderModal').classList.add('hidden')" class="py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold transition">
+            🔴 فروش فوری (Sell)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function switchRightTab(tabId) {
+      document.getElementById('tabWatchlist').classList.add('hidden');
+      document.getElementById('tabPropSim').classList.add('hidden');
+      document.getElementById('tabAltData').classList.add('hidden');
+      document.getElementById(tabId).classList.remove('hidden');
+
+      const tabs = ['tabWatchlist', 'tabPropSim', 'tabAltData'];
+      const btns = ['btnRightWatchlist', 'btnRightPropSim', 'btnRightAltData'];
+      tabs.forEach((t, i) => {
+        const btn = document.getElementById(btns[i]);
+        if (t === tabId) {
+          btn.className = 'flex-1 py-2.5 font-bold text-cyan-400 border-b-2 border-cyan-400';
+        } else {
+          btn.className = 'flex-1 py-2.5 font-bold text-slate-400 hover:text-white';
+        }
+      });
+    }
+  </script>
+  <!-- INITIAL_DATA_PLACEHOLDER -->
+  <script src="/static/js/vela_core.js"></script>
+  <script src="/static/js/ui.js"></script>
+</body>
+</html>

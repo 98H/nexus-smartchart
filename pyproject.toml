@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smartchart"
+version = "1.0.0"
+description = "Enterprise TradingView Alternative based on LuxAlgo Open Ecosystem"
+authors = [{ name = "Nexus Agent", email = "nexus@nousresearch.com" }]
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn>=0.28.0",
+    "pydantic>=2.6.0",
+    "numpy>=1.26.0",
+    "pandas>=2.2.0",
+    "requests>=2.31.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

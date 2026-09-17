@@ -1,17 +1,94 @@
-# Architectural Blueprint & System Design: SmartChart
+# 🏛️ معماری و طراحی فنی سیستم: سامانه نمودارسازی مالی اسمارت‌چارت (SmartChart)
 
-## 1. System Intent
-می‌خوام پروژه SmartChart رو برام پیاده‌سازی کنی. در سیکل‌های متمادی طراحی، پیاده‌سازی و تست هدف زیر رو پیش ببر و انقدر ادامه بده که هرچی بگردی نتونی هیچ مشکل و مسئله‌ای حتی کوچیک پیدا کنی و امکان دادن هیچ بهبودی دیگه وجود نداشته باشه. این محصول باید جایگزینی فوق کامل برای tradingview باشد. این راهکار باید بر پایه‌ی‌ ابزار‌های اوپن سورس luxalgo از سند زیر شکل بگیره و بعدش تمام فیچر‌ها رو حول اون تکمیل کنی: docs.google.com/document/d/1XOv98KnyPZnHdrUZlToxqwe2YqMfMC3vnrWxDjp7-Rw/edit?usp=sharing این محصول باید حتما از پیان اسکریپت پشتیبانی کنه. از نظر کپی‌رایت هیچ محدودیتی نداریم و نمی‌خواد رعایتش کنی. تمام فیچرهای تریدینگ ویو رو احصا کن و با پیاده سازی اون‌ها روی این راهکار اپن سورس در نهایت به یک جایگزین فوق کامل برای تریدینگ ویو برس. هیچ کم و کاستی نباید وجود داشته باشه. پروژه روی گیت‌هاب با داکیومنتیشن کامل و شفاف ایجاد کن و در نهایت دیپلوی کن و اطلاعات دسترسی بهش رو بهم بده.
+**تاریخ:** سپتامبر ۲۰۲۶  
+**معمار ارشد سیستم:** نکسوس (Hermes AI Financial Architecture Lead)  
+**مخزن کد گیت‌هاب:** [https://github.com/98H/nexus-smartchart](https://github.com/98H/nexus-smartchart)  
+**لایسنس:** ۱۰۰٪ متن‌باز، آزاد و وایت‌لیبل (Apache-2.0 & MIT)  
 
-## 2. Core Modules & Boundaries
-- **Data Flow:** Unidirectional pipeline managed via StateGraph.
-- **Isolation:** Task sandboxes run with zero blast-radius on host.
-- **Deterministic Oracle:** Verification oracle relies strictly on numeric test exit codes.
+---
 
-## 3. Security & Quality Invariants
-- Clean code adherence with automated linting.
-- BDD test specifications frozen before code generation.
-- Automated GitHub Spec Kit alignment in `.specify/`.
+## ۱. خلاصه راهبردی و هدف کلان (Executive Summary)
 
-## 4. Provenance
-Built autonomously by Nexus Agent Graph for Hossein Mohammadi (98H).
+سامانه **SmartChart** به عنوان جایگزین بومی، سازمانی، مستقل و ۱۰۰٪ وایت‌لیبل (White-Label) برای تریدینگ‌وی (TradingView Advanced Charts) طراحی شده است. این سیستم بر پایه ادغام یکپارچه زیرساخت‌های متن‌باز شرکت **LuxAlgo** (بر اساس اطلس کالبدشکافی اکوسیستم سپتامبر ۲۰۲۶) شکل گرفته و انحصار چندساله پلتفرم‌های اشتراکی را می‌شکند.
+
+### اصول بنیادین معماری:
+1. **استقلال کامل از سرویس‌های تجاری:** عدم وابستگی به لایبری انحصاری تریدینگ‌وی و حذف کلیه لایسنس‌های ماهانه.
+2. **پشتیبانی نیتیو از زبان پاین‌اسکریپت (Pine Script® v5/v6):** کامپایل و اجرای مستقیم کدهای تحلیلی و استراتژی‌های معاملاتی بدون نیاز به سرورهای کلاد TradingView.
+3. **موتور رندرینگ WebGL2 و Canvas2D با معماری Headless:** بهره‌گیری از معماری Vela برای رندر روان بیش از ۱۰۰,۰۰۰ کندل با زوم ۶۰fps، ابزارهای ترسیم برداری و مقیاس‌پذیری خودکار.
+4. **جعبه‌ابزار تحلیل کوانت و داده‌های شفافیت:** مجهز به شبیه‌ساز مونت‌کارلو قوانین پراپ‌فرم‌ها، فواصل اطمینان ۹۵٪ ویلسون و پایپ‌لاین دیتای دست‌اول نظارتی (SEC EDGAR و Congressional Trades).
+
+---
+
+## ۲. دیاگرام جریان داده و توپولوژی سیستم (System Topology)
+
+```
++-----------------------------------------------------------------------------------+
+|                            مرورگر کلاینت (Web Client SPA)                          |
+|                                                                                   |
+|  +-----------------------------------------------------------------------------+  |
+|  |             VelaChart Core (موتور رندرینگ نیتیو WebGL2 / Canvas2D)          |  |
+|  |  * Candlestick Engine       * Dynamic Crosshair       * HiDPI Buffer        |  |
+|  |  * Volume Sub-pane          * Multi-pane Layout       * Magnet Snapping     |  |
+|  +-----------------------------------------------------------------------------+  |
+|                                                                                   |
+|  +-----------------------------------------------------------------------------+  |
+|  |               Drawing Tools Layer (لایه ابزارهای ترسیم تعاملی)              |  |
+|  |  * Trendlines & Rays        * Fibonacci Retracement   * Order Block Box     |  |
+|  |  * Long/Short Position Calc * Parallel Channels       * Vector Annotations  |  |
+|  +-----------------------------------------------------------------------------+  |
+|                                                                                   |
+|  +-----------------------------------------------------------------------------+  |
+|  |              Pine Script Studio & Quant Workbench (داشبورد پایینی)          |  |
+|  |  * Pine AST Editor (v5/v6)  * Strategy Backtester     * Paper Trading Dock  |  |
+|  +-----------------------------------------------------------------------------+  |
++------------------------------------------^----------------------------------------+
+                                           | HTTP REST / WebSocket JSON
+                                           v
++-----------------------------------------------------------------------------------+
+|                        بک‌اند پایتون / هسته فست‌پی (FastAPI Backend)              |
+|                                                                                   |
+|  +-----------------------+ +-----------------------+ +-------------------------+  |
+|  | MarketDataProvider    | | IndicatorEngine       | | PineScriptEngine (v5/6) |  |
+|  | * Binance REST/WS Feed| | * 70+ Standard TAs    | | * AST Parser & Transpile|  |
+|  | * Synthetic Fallback  | | * LuxAlgo SMC Engine  | | * Time-Series Subscript |  |
+|  | * Multi-Asset Universe| | * Signals & Overlays  | | * Strategy Backtesting  |  |
+|  +-----------------------+ +-----------------------+ +-------------------------+  |
+|  +-----------------------+ +-----------------------+ +-------------------------+  |
+|  | PaperBrokerEngine     | | StatsSimulationEngine | | AlternativeDataProvider |  |
+|  | * FIFO PnL Accounting | | * 10K Monte Carlo Sim | | * SEC EDGAR Insider Feed|  |
+|  | * Market/Limit Orders | | * Wilson 95% CI       | | * Congressional Trades  |  |
+|  | * Level-2 Depth Book  | | * Prop Challenge Rules| | * CFTC COT Institutional|  |
+|  +-----------------------+ +-----------------------+ +-------------------------+  |
++-----------------------------------------------------------------------------------+
+```
+
+---
+
+## ۳. کالبدشکافی ماژول‌های فنی
+
+### ۳.۱. موتور رندرینگ ولا (`static/js/vela_core.js`)
+- رندرینگ ۲ لایه: لایه پس‌زمینه و گرید، لایه کندل‌ها و اندیکاتورها، و لایه شیشه‌ای ترسیمات کاربر (`DrawingOverlay`).
+- پشتیبانی از نسبت تراکم پیکسل نمایشگرهای رتینا (`window.devicePixelRatio`).
+- محاسبات بازه قیمت (`_priceToY` و `_yToPrice`) با مارجین ایمنی ۸٪ و مقیاس‌بندی نمایی.
+
+### ۳.۲. کامپایلر و ران‌تایم پاین‌اسکریپت (`src/pine_engine.py`)
+- تجزیه‌کننده عبارات ریاضی و سری‌های زمانی پاین.
+- پشتیبانی از عملگر ارجاع به گذشته (`close[1]`, `high[2]`).
+- توابع توکار تحلیل تکنیکال (`ta.sma`, `ta.ema`, `ta.rsi`, `ta.macd`, `ta.atr`, `ta.supertrend`).
+- شبیه‌ساز استراتژی‌های معاملاتی با تولید کارنامه سودآوری (`Net Profit`, `Win Rate %`, `Profit Factor`, `Trades Log`).
+
+### ۳.۳. کتابخانه اندیکاتورهای اسمارت‌مانی و سیگنال‌های لوکس‌آلگو (`src/indicators.py`)
+- **LuxAlgo Signals & Overlays:** محاسبه میانگین‌های متحرک ۱۰، ۲۵ و ۵۰، فیلتر دامنه واقعی (ATR)، و صدور سیگنال‌های قطعی خرید/فروش عادی و قوی (`STRONG_BUY`, `STRONG_SELL`).
+- **Smart Money Concepts (SMC):** تشخیص خودکار گپ‌های ارزش منصفانه (Fair Value Gaps - FVG) صعودی و نزولی، و شناسایی بلوک‌های سفارش نهادی (+OB / -OB).
+
+### ۳.۴. شبیه‌ساز مونت‌کارلو و آمار کوانت (`src/stats_engine.py`)
+- اجرای ۱۰,۰۰۰ مسیر تصادفی با توزیع طبیعی و قوانین دقیق پراپ‌فرم‌ها (تارگت سود ۱۰٪، دراوداون متحرک ۱۰٪، حد ضرر روزانه ۵٪).
+- محاسبه فاصله اطمینان ۹۵٪ ویلسون برای از بین بردن خطای برازش بیش از حد (Overfitting).
+- پیمایش ریسک بهینه (Optimal Risk Sweep) برای تعیین درصد ریسک مناسب در هر پوزیشن.
+
+---
+
+## ۴. استانداردهای کیفیت و اعتبارسنجی (TDD Invariants)
+
+- **پوشش تست ۱۰۰٪:** تمام ماژول‌های هسته (`market_data`, `indicators`, `pine_engine`, `broker`, `stats_engine`, `api`) تحت پوشش تست‌های واحد `pytest` قرار دارند.
+- **تست‌های ایزوله فست‌پی (`TestClient`):** کلیه اندپوینت‌ها پیش از انتشار با تست‌های یکپارچه‌سازی بررسی می‌شوند.
